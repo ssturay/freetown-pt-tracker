@@ -45,3 +45,8 @@ def get_vehicles():
         }
 
     return jsonify(results)
+    
+@app.route("/", methods=["GET"])
+def home():
+    return "✅ Public Transport Tracker backend is running!"
+
