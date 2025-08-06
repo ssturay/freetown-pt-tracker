@@ -20,7 +20,7 @@ public class MainActivity extends AppCompatActivity {
     private FusedLocationProviderClient fusedLocationClient;
     private TextView statusText;
     private final String VEHICLE_ID = "Poda001";
-    private final String SERVER_URL = "https://freetown-tracker-backend.onrender.com/api/location/update";
+    private final String SERVER_URL = "https://freetown-pt-tracker-backend.onrender.com/api/location/update";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
