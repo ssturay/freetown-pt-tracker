@@ -20,7 +20,7 @@
     const markers = {};
 
     function fetchData() {
-      fetch("http://YOUR_PUBLIC_URL/api/vehicles") // Replace with your Flask backend
+      fetch("https://freetown-pt-tracker-backend.onrender.com/api/vehicles")
         .then(res => res.json())
         .then(data => {
           for (const [id, info] of Object.entries(data)) {
