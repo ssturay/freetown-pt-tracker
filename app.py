@@ -1,11 +1,13 @@
+# app.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from geopy.distance import geodesic
 import time
 
 app = Flask(__name__)
 CORS(app)
 
-# In-memory store: {vehicle_id: {"lat": ..., "lon": ..., "mode": ..., "last_update": ...}}
+# In-memory store: {vehicle_id: {"lat": ..., "lon": ..., "last_update": ..., "mode": ...}}
 vehicle_data = {}
 
 @app.route("/api/location/update", methods=["GET"])
@@ -13,17 +15,18 @@ def update_location():
     vehicle_id = request.args.get("id")
     lat = request.args.get("lat")
     lon = request.args.get("lon")
-    mode = request.args.get("mode")
+    mode = request.args.get("mode")  # NEW
 
     if not all([vehicle_id, lat, lon, mode]):
-        return "Missing parameters (id, lat, lon, mode required)", 400
+        return "Missing parameters", 400
 
     vehicle_data[vehicle_id] = {
         "lat": float(lat),
         "lon": float(lon),
-        "mode": mode.strip().lower(),  # normalize mode
+        "mode": mode.strip().lower(),  # Normalize
         "last_update": time.time()
     }
+
     return f"Location updated for {vehicle_id}", 200
 
 @app.route("/api/vehicles", methods=["GET"])
@@ -32,18 +35,16 @@ def get_vehicles():
     results = {}
 
     for vehicle_id, info in vehicle_data.items():
-        lat = info["lat"]
-        lon = info["lon"]
-        mode = info.get("mode", "unknown")
+        lat, lon = info["lat"], info["lon"]
         age = now - info["last_update"]
 
-        # Simulated ETA: assume 30 km/h avg, just a placeholder
-        eta_min = round(5 + (age / 60))
+        # Simulate ETA: assume 30 km/h average speed, estimate
+        eta_min = round(5 + (age / 60))  # Just an estimate
 
         results[vehicle_id] = {
             "lat": lat,
             "lon": lon,
-            "mode": mode,
+            "mode": info.get("mode", "unknown"),  # NEW
             "eta_min": eta_min
         }
 
