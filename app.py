@@ -53,3 +53,15 @@ def get_vehicles():
 @app.route("/", methods=["GET"])
 def home():
     return "✅ Public Transport Tracker backend is running!"
+
+@app.route("/api/location/delete", methods=["POST"])
+def delete_vehicle():
+    vehicle_id = request.json.get("id")
+    if not vehicle_id:
+        return "Vehicle ID required", 400
+
+    if vehicle_id in vehicle_data:
+        del vehicle_data[vehicle_id]
+        return f"Deleted vehicle {vehicle_id}", 200
+    else:
+        return "Vehicle not found", 404
