@@ -58,6 +58,8 @@ def home():
 
 @app.route("/api/vehicles/clear", methods=["POST"])
 def clear_vehicles():
-    vehicle_data.clear()
-    return jsonify({"status": "cleared"}), 200
+    global vehicle_data
+    vehicle_data = {}
+    return jsonify({"status": "cleared", "message": "All vehicles have been removed"}), 200
+
 
