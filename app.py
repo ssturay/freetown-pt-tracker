@@ -10,6 +10,9 @@ CORS(app)
 # In-memory store: {vehicle_id: {"lat": ..., "lon": ..., "last_update": ..., "mode": ...}}
 vehicle_data = {}
 
+# In-memory store for tracking status: {vehicle_id: bool}
+tracking_status = {}
+
 @app.route("/api/location/update", methods=["GET"])
 def update_location():
     vehicle_id = request.args.get("id")
@@ -35,6 +38,10 @@ def get_vehicles():
     results = {}
 
     for vehicle_id, info in vehicle_data.items():
+        # Only include vehicles currently being tracked
+        if not tracking_status.get(vehicle_id, False):
+            continue
+
         lat, lon = info["lat"], info["lon"]
         age = now - info["last_update"]
 
@@ -54,12 +61,31 @@ def get_vehicles():
 def home():
     return "✅ Public Transport Tracker backend is running!"
 
-
-
 @app.route("/api/vehicles/clear", methods=["POST"])
 def clear_vehicles():
     global vehicle_data
     vehicle_data = {}
     return jsonify({"status": "cleared", "message": "All vehicles have been removed"}), 200
 
+# --- New endpoints for tracking ---
 
+@app.route("/api/tracking/start", methods=["POST"])
+def start_tracking():
+    data = request.get_json()
+    vehicle_id = data.get("id") if data else None
+    if not vehicle_id:
+        return jsonify({"error": "Missing vehicle id"}), 400
+    tracking_status[vehicle_id] = True
+    return jsonify({"status": "tracking started", "id": vehicle_id}), 200
+
+@app.route("/api/tracking/stop", methods=["POST"])
+def stop_tracking():
+    data = request.get_json()
+    vehicle_id = data.get("id") if data else None
+    if not vehicle_id:
+        return jsonify({"error": "Missing vehicle id"}), 400
+    tracking_status[vehicle_id] = False
+    return jsonify({"status": "tracking stopped", "id": vehicle_id}), 200
+
+if __name__ == '__main__':
+    app.run(debug=True)
