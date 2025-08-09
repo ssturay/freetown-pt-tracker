@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from geopy.distance import geodesic
@@ -18,7 +17,7 @@ def update_location():
     vehicle_id = request.args.get("id")
     lat = request.args.get("lat")
     lon = request.args.get("lon")
-    mode = request.args.get("mode")  # NEW
+    mode = request.args.get("mode")
 
     if not all([vehicle_id, lat, lon, mode]):
         return "Missing parameters", 400
@@ -26,7 +25,7 @@ def update_location():
     vehicle_data[vehicle_id] = {
         "lat": float(lat),
         "lon": float(lon),
-        "mode": mode.strip().lower(),  # Normalize
+        "mode": mode.strip().lower(),
         "last_update": time.time()
     }
 
@@ -35,27 +34,26 @@ def update_location():
 @app.route("/api/vehicles", methods=["GET"])
 def get_vehicles():
     now = time.time()
-    results = {}
+    vehicles = []
 
     for vehicle_id, info in vehicle_data.items():
-        # Only include vehicles currently being tracked
         if not tracking_status.get(vehicle_id, False):
             continue
 
         lat, lon = info["lat"], info["lon"]
         age = now - info["last_update"]
 
-        # Simulate ETA: assume 30 km/h average speed, estimate
-        eta_min = round(5 + (age / 60))  # Just an estimate
+        eta_min = round(5 + (age / 60))  # Placeholder ETA estimate
 
-        results[vehicle_id] = {
+        vehicles.append({
+            "id": vehicle_id,
             "lat": lat,
             "lon": lon,
-            "mode": info.get("mode", "unknown"),  # NEW
+            "mode": info.get("mode", "unknown"),
             "eta_min": eta_min
-        }
+        })
 
-    return jsonify(results)
+    return jsonify({ "vehicles": vehicles })  # ✅ Fixed response format
 
 @app.route("/", methods=["GET"])
 def home():
@@ -66,8 +64,6 @@ def clear_vehicles():
     global vehicle_data
     vehicle_data = {}
     return jsonify({"status": "cleared", "message": "All vehicles have been removed"}), 200
-
-# --- New endpoints for tracking ---
 
 @app.route("/api/tracking/start", methods=["POST"])
 def start_tracking():
