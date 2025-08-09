@@ -10,7 +10,7 @@ const BACKEND_URL = "https://freetown-pt-tracker-backend.onrender.com/api/locati
 const routesPath = path.join(__dirname, "routes", "freetown_routes.geojson");
 const geojson = JSON.parse(fs.readFileSync(routesPath));
 
-// Map of modes you care about
+// Public transport modes to simulate
 const supportedModes = [
   "Podapoda",
   "Keke",
@@ -20,27 +20,32 @@ const supportedModes = [
   "Motorbike"
 ];
 
-// One simulated vehicle per mode
+// Number of simulated vehicles per route
+const VEHICLES_PER_ROUTE = 3;
+
 const vehicles = [];
 
-supportedModes.forEach((mode, index) => {
-  // Find the first matching route for this mode
-  const routeFeature = geojson.features.find(f =>
-    f.properties.mode?.toLowerCase() === mode.toLowerCase()
+supportedModes.forEach((mode) => {
+  const matchingRoutes = geojson.features.filter(
+    f => f.properties?.mode?.toLowerCase() === mode.toLowerCase()
   );
 
-  if (routeFeature && routeFeature.geometry?.coordinates?.length > 0) {
-    const coords = routeFeature.geometry.coordinates;
+  matchingRoutes.forEach((routeFeature, routeIdx) => {
+    const coords = routeFeature.geometry?.coordinates;
 
-    vehicles.push({
-      id: `${mode.toLowerCase().replace(/\s+/g, "")}_${index}`,
-      mode,
-      path: coords,
-      positionIndex: Math.floor(Math.random() * coords.length) // start randomly
-    });
-  } else {
-    console.warn(`⚠️ No route found for mode: ${mode}`);
-  }
+    if (coords?.length > 0) {
+      for (let i = 0; i < VEHICLES_PER_ROUTE; i++) {
+        const id = `${mode.toLowerCase().replace(/\s+/g, "")}_${routeIdx}_${i}`;
+        const randomStart = Math.floor(Math.random() * coords.length);
+        vehicles.push({
+          id,
+          mode,
+          path: coords,
+          positionIndex: randomStart
+        });
+      }
+    }
+  });
 });
 
 function updateVehicles() {
@@ -62,10 +67,9 @@ function updateVehicles() {
       console.error(`❌ ${vehicle.id} failed:`, err.message);
     }
 
-    // Move to next point (looping)
     vehicle.positionIndex = (vehicle.positionIndex + 1) % vehicle.path.length;
   });
 }
 
-console.log("🚍 Simulator started. Sending pings every 10s...");
+console.log(`🚍 Simulator started for ${vehicles.length} vehicles. Pinging every 10s...`);
 setInterval(updateVehicles, 10000);
