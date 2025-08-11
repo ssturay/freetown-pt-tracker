@@ -5,39 +5,37 @@ import time
 app = Flask(__name__)
 CORS(app)
 
-# In-memory vehicle storage: {vehicle_id: {...}}
+# In-memory vehicle store: {vehicle_id: {lat, lon, mode, last_update}}
 vehicle_data = {}
 
-# Tracking sessions: {vehicle_id: {"active": bool, "last_active": timestamp}}
+# In-memory tracking store: {vehicle_id: bool}
 tracking_status = {}
 
-# Mode → Icon mapping
-ICON_MAP = {
-    "podapoda": "https://cdn-icons-png.flaticon.com/512/743/743007.png",
-    "taxi": "https://cdn-icons-png.flaticon.com/512/190/190671.png",
-    "keke": "https://cdn-icons-png.flaticon.com/512/2967/2967037.png",
-    "paratransit bus": "https://cdn-icons-png.flaticon.com/512/61/61221.png",
-    "waka fine bus": "https://cdn-icons-png.flaticon.com/512/861/861060.png",
-    "motorbike": "https://cdn-icons-png.flaticon.com/512/4721/4721203.png"
-}
+# --- LOGIN CONFIG ---
+VALID_USERNAME = "admin"
+VALID_PASSWORD = "mypassword"
 
-TRACKING_TIMEOUT = 300  # 5 minutes in seconds
+@app.route("/api/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
 
-
-@app.route("/", methods=["GET"])
-def home():
-    return "✅ Public Transport Tracker backend is running!"
+    if username == VALID_USERNAME and password == VALID_PASSWORD:
+        return jsonify({"success": True}), 200
+    return jsonify({"success": False, "error": "Invalid username or password"}), 401
 
 
 @app.route("/api/location/update", methods=["GET"])
 def update_location():
+    """Update location via GET params: id, lat, lon, mode"""
     vehicle_id = request.args.get("id")
     lat = request.args.get("lat")
     lon = request.args.get("lon")
     mode = request.args.get("mode")
 
     if not all([vehicle_id, lat, lon, mode]):
-        return jsonify({"success": False, "message": "Missing parameters"}), 400
+        return "Missing parameters", 400
 
     vehicle_data[vehicle_id] = {
         "lat": float(lat),
@@ -46,11 +44,7 @@ def update_location():
         "last_update": time.time()
     }
 
-    # Keep last_active fresh if tracking is on
-    if tracking_status.get(vehicle_id, {}).get("active"):
-        tracking_status[vehicle_id]["last_active"] = time.time()
-
-    return jsonify({"success": True, "message": f"Location updated for {vehicle_id}"}), 200
+    return f"Location updated for {vehicle_id}", 200
 
 
 @app.route("/api/vehicles", methods=["GET"])
@@ -59,58 +53,55 @@ def get_vehicles():
     vehicles = []
 
     for vehicle_id, info in vehicle_data.items():
-        # Skip if tracking session expired
-        if tracking_status.get(vehicle_id, {}).get("active"):
-            if now - tracking_status[vehicle_id]["last_active"] > TRACKING_TIMEOUT:
-                tracking_status[vehicle_id]["active"] = False
+        if not tracking_status.get(vehicle_id, False):
+            continue
 
         lat, lon = info["lat"], info["lon"]
         age = now - info["last_update"]
+
+        eta_min = round(5 + (age / 60))  # Placeholder ETA
 
         vehicles.append({
             "id": vehicle_id,
             "lat": lat,
             "lon": lon,
             "mode": info.get("mode", "unknown"),
-            "icon": ICON_MAP.get(info.get("mode", ""), ""),
-            "eta_min": round(5 + (age / 60))
+            "eta_min": eta_min
         })
 
-    return jsonify({"success": True, "vehicles": vehicles}), 200
+    return jsonify({"vehicles": vehicles})
+
+
+@app.route("/api/vehicles/clear", methods=["POST"])
+def clear_vehicles():
+    vehicle_data.clear()
+    return jsonify({"status": "cleared", "message": "All vehicles removed"}), 200
 
 
 @app.route("/api/tracking/start", methods=["POST"])
 def start_tracking():
     data = request.get_json()
-    vehicle_id = data.get("id") if data else None
-
+    vehicle_id = data.get("id")
     if not vehicle_id:
-        return jsonify({"success": False, "message": "Missing vehicle id"}), 400
-
-    tracking_status[vehicle_id] = {"active": True, "last_active": time.time()}
-
-    return jsonify({"success": True, "message": "Tracking started", "id": vehicle_id}), 200
+        return jsonify({"error": "Missing vehicle id"}), 400
+    tracking_status[vehicle_id] = True
+    return jsonify({"status": "tracking started", "id": vehicle_id}), 200
 
 
 @app.route("/api/tracking/stop", methods=["POST"])
 def stop_tracking():
     data = request.get_json()
-    vehicle_id = data.get("id") if data else None
-
+    vehicle_id = data.get("id")
     if not vehicle_id:
-        return jsonify({"success": False, "message": "Missing vehicle id"}), 400
-
-    tracking_status[vehicle_id] = {"active": False, "last_active": time.time()}
-
-    return jsonify({"success": True, "message": "Tracking stopped", "id": vehicle_id}), 200
+        return jsonify({"error": "Missing vehicle id"}), 400
+    tracking_status[vehicle_id] = False
+    return jsonify({"status": "tracking stopped", "id": vehicle_id}), 200
 
 
-@app.route("/api/vehicles/clear", methods=["POST"])
-def clear_vehicles():
-    global vehicle_data
-    vehicle_data = {}
-    return jsonify({"success": True, "message": "All vehicles have been removed"}), 200
+@app.route("/", methods=["GET"])
+def home():
+    return "✅ Public Transport Tracker backend is running!"
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
