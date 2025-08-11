@@ -1,34 +1,37 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from geopy.distance import geodesic
 import time
 
 app = Flask(__name__)
 CORS(app)
 
-# In-memory vehicle store: {vehicle_id: {lat, lon, mode, last_update}}
+# In-memory store: {vehicle_id: {...}}
 vehicle_data = {}
-
-# In-memory tracking store: {vehicle_id: bool}
 tracking_status = {}
+sessions = {}  # { session_token: username }
 
-# --- LOGIN CONFIG ---
+# Dummy credentials
 VALID_USERNAME = "admin"
 VALID_PASSWORD = "mypassword"
 
+# --- LOGIN ---
 @app.route("/api/login", methods=["POST"])
 def login():
     data = request.get_json()
-    username = data.get("username", "").strip()
-    password = data.get("password", "").strip()
+    username = data.get("username")
+    password = data.get("password")
 
     if username == VALID_USERNAME and password == VALID_PASSWORD:
-        return jsonify({"success": True}), 200
-    return jsonify({"success": False, "error": "Invalid username or password"}), 401
+        token = str(time.time())  # Simple token; use UUID in production
+        sessions[token] = username
+        return jsonify({"status": "ok", "token": token}), 200
 
+    return jsonify({"status": "error", "message": "Invalid credentials"}), 401
 
+# --- LOCATION UPDATE ---
 @app.route("/api/location/update", methods=["GET"])
 def update_location():
-    """Update location via GET params: id, lat, lon, mode"""
     vehicle_id = request.args.get("id")
     lat = request.args.get("lat")
     lon = request.args.get("lon")
@@ -43,10 +46,9 @@ def update_location():
         "mode": mode.strip().lower(),
         "last_update": time.time()
     }
-
     return f"Location updated for {vehicle_id}", 200
 
-
+# --- VEHICLES ---
 @app.route("/api/vehicles", methods=["GET"])
 def get_vehicles():
     now = time.time()
@@ -71,13 +73,14 @@ def get_vehicles():
 
     return jsonify({"vehicles": vehicles})
 
-
+# --- CLEAR VEHICLES ---
 @app.route("/api/vehicles/clear", methods=["POST"])
 def clear_vehicles():
-    vehicle_data.clear()
-    return jsonify({"status": "cleared", "message": "All vehicles removed"}), 200
+    global vehicle_data
+    vehicle_data = {}
+    return jsonify({"status": "cleared"}), 200
 
-
+# --- START TRACKING ---
 @app.route("/api/tracking/start", methods=["POST"])
 def start_tracking():
     data = request.get_json()
@@ -87,7 +90,7 @@ def start_tracking():
     tracking_status[vehicle_id] = True
     return jsonify({"status": "tracking started", "id": vehicle_id}), 200
 
-
+# --- STOP TRACKING ---
 @app.route("/api/tracking/stop", methods=["POST"])
 def stop_tracking():
     data = request.get_json()
@@ -97,11 +100,10 @@ def stop_tracking():
     tracking_status[vehicle_id] = False
     return jsonify({"status": "tracking stopped", "id": vehicle_id}), 200
 
-
+# --- ROOT ---
 @app.route("/", methods=["GET"])
 def home():
     return "✅ Public Transport Tracker backend is running!"
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)
