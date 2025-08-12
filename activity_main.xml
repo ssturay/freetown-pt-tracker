@@ -1,12 +1,65 @@
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:background="#F5F5F5">
 
+    <!-- Title -->
     <TextView
-        android:id="@+id/statusText"
+        android:id="@+id/appTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Waiting for GPS..."
+        android:text="🚐 PT Tracker - Driver/Passenger"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="#004d40"
+        android:layout_marginBottom="20dp" />
+
+    <!-- Vehicle ID Input -->
+    <EditText
+        android:id="@+id/vehicleId"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter Vehicle ID"
+        android:inputType="text"
+        android:padding="12dp"
+        android:background="@android:drawable/edit_text"
+        android:textSize="16sp"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Mode of Transport Dropdown -->
+    <Spinner
+        android:id="@+id/modeSpinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:spinnerMode="dropdown"
+        android:padding="8dp" />
+
+    <!-- Start Tracking Button -->
+    <Button
+        android:id="@+id/startTracking"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="📍 Start Tracking"
         android:textSize="18sp"
-        android:layout_centerInParent="true"/>
-</RelativeLayout>
+        android:backgroundTint="#00796b"
+        android:textColor="#FFFFFF"
+        android:padding="12dp"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Stop Tracking Button -->
+    <Button
+        android:id="@+id/stopTracking"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="🛑 Stop Tracking"
+        android:textSize="18sp"
+        android:backgroundTint="#c62828"
+        android:textColor="#FFFFFF"
+        android:padding="12dp" />
+
+</LinearLayout>
