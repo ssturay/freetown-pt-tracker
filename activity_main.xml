@@ -1,65 +1,115 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp"
-    android:orientation="vertical"
-    android:gravity="center_horizontal"
-    android:background="#F5F5F5">
+    tools:context=".MainActivity">
 
-    <!-- Title -->
-    <TextView
-        android:id="@+id/appTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="🚐 PT Tracker - Driver/Passenger"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:textColor="#004d40"
-        android:layout_marginBottom="20dp" />
-
-    <!-- Vehicle ID Input -->
-    <EditText
-        android:id="@+id/vehicleId"
+    <!-- App bar / header -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/topAppBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Enter Vehicle ID"
-        android:inputType="text"
-        android:padding="12dp"
-        android:background="@android:drawable/edit_text"
-        android:textSize="16sp"
-        android:layout_marginBottom="16dp" />
+        android:backgroundTint="@color/teal_700"
+        android:title="@string/app_name"
+        android:titleTextColor="@android:color/white"/>
 
-    <!-- Mode of Transport Dropdown -->
-    <Spinner
-        android:id="@+id/modeSpinner"
+    <ScrollView
+        android:layout_marginTop="?attr/actionBarSize"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:spinnerMode="dropdown"
-        android:padding="8dp" />
+        android:layout_height="match_parent">
 
-    <!-- Start Tracking Button -->
-    <Button
-        android:id="@+id/startTracking"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="📍 Start Tracking"
-        android:textSize="18sp"
-        android:backgroundTint="#00796b"
-        android:textColor="#FFFFFF"
-        android:padding="12dp"
-        android:layout_marginBottom="12dp" />
+        <LinearLayout
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
 
-    <!-- Stop Tracking Button -->
-    <Button
-        android:id="@+id/stopTracking"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="🛑 Stop Tracking"
-        android:textSize="18sp"
-        android:backgroundTint="#c62828"
-        android:textColor="#FFFFFF"
-        android:padding="12dp" />
+            <!-- Vehicle ID (remembered) -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/vehicle_id_label"
+                android:textStyle="bold" />
 
-</LinearLayout>
+            <EditText
+                android:id="@+id/etVehicleId"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/vehicle_id_hint"
+                android:inputType="text"
+                android:importantForAutofill="yes"
+                android:imeOptions="actionDone" />
+
+            <CheckBox
+                android:id="@+id/cbRememberId"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/remember_vehicle_id"
+                android:paddingTop="6dp"/>
+
+            <!-- Mode selector -->
+            <TextView
+                android:layout_marginTop="12dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/mode_label"
+                android:textStyle="bold" />
+
+            <Spinner
+                android:id="@+id/spinnerMode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:prompt="@string/mode_prompt"/>
+
+            <!-- Tracking controls -->
+            <LinearLayout
+                android:layout_marginTop="18dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="end"
+                android:weightSum="2">
+
+                <Button
+                    android:id="@+id/btnStart"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/start_tracking" />
+
+                <Button
+                    android:id="@+id/btnStop"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/stop_tracking" />
+            </LinearLayout>
+
+            <!-- Status box -->
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_marginTop="18dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/status_idle"
+                android:background="@android:color/white"
+                android:padding="10dp"
+                android:elevation="2dp"/>
+
+            <!-- Last sent / debug -->
+            <TextView
+                android:id="@+id/tvLastSent"
+                android:layout_marginTop="8dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/last_sent_none"
+                android:textSize="12sp"
+                android:textColor="#666"/>
+
+        </LinearLayout>
+    </ScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
