@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">Freetown PT - Driver</string>
+
+    <string name="vehicle_id_label">Vehicle ID</string>
+    <string name="vehicle_id_hint">e.g. WAKA-001 or PODA-12</string>
+    <string name="remember_vehicle_id">Remember vehicle ID</string>
+
+    <string name="mode_label">Mode of Transport</string>
+    <string name="mode_prompt">Choose mode</string>
+
+    <string name="start_tracking">Start Tracking</string>
+    <string name="stop_tracking">Stop Tracking</string>
+
+    <string name="status_idle">Not tracking</string>
+    <string name="last_sent_none">Last sent: —</string>
+
+    <!-- Modes (for clarity; you can also provide these as array in arrays.xml) -->
+    <string-array name="transport_modes">
+        <item>Podapoda</item>
+        <item>Taxi</item>
+        <item>Keke</item>
+        <item>Paratransit Bus</item>
+        <item>Waka Fine Bus</item>
+        <item>Motorbike</item>
+    </string-array>
+</resources>
