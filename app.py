@@ -8,7 +8,7 @@ app = Flask(__name__)
 CORS(app)
 
 DB_FILE = "vehicles.db"
-vehicles_data = {}  # in-memory store: {vehicle_id: {...}}
+vehicles_data = {}  # {vehicle_id: {...}}
 
 # =========================
 # Database Initialization
@@ -22,6 +22,7 @@ def init_db():
             mode TEXT,
             lat REAL,
             lon REAL,
+            route_id TEXT,
             timestamp REAL
         )
     """)
@@ -35,7 +36,7 @@ def load_from_db():
     global vehicles_data
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT id, mode, lat, lon, timestamp FROM vehicles")
+    c.execute("SELECT id, mode, lat, lon, route_id, timestamp FROM vehicles")
     rows = c.fetchall()
     conn.close()
     for row in rows:
@@ -44,7 +45,8 @@ def load_from_db():
             "mode": row[1],
             "lat": row[2],
             "lon": row[3],
-            "timestamp": row[4]
+            "route_id": row[4],
+            "timestamp": row[5]
         }
 
 # =========================
@@ -54,23 +56,48 @@ def save_to_db(vehicle):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("""
-        INSERT INTO vehicles (id, mode, lat, lon, timestamp)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO vehicles (id, mode, lat, lon, route_id, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
             mode=excluded.mode,
             lat=excluded.lat,
             lon=excluded.lon,
+            route_id=excluded.route_id,
             timestamp=excluded.timestamp
-    """, (vehicle["id"], vehicle["mode"], vehicle["lat"], vehicle["lon"], vehicle["timestamp"]))
+    """, (
+        vehicle["id"],
+        vehicle["mode"],
+        vehicle["lat"],
+        vehicle["lon"],
+        vehicle["route_id"],
+        vehicle["timestamp"]
+    ))
     conn.commit()
     conn.close()
 
 # =========================
-# API: Get all vehicles
+# API: Get all vehicles (optional route filter)
 # =========================
 @app.route("/api/vehicles", methods=["GET"])
 def get_vehicles():
-    return jsonify({"vehicles": list(vehicles_data.values())})
+    route_filter = request.args.get("route_id", "").strip()
+    now = time.time()
+
+    # Remove stale entries (older than 30 seconds)
+    expired = [vid for vid, v in vehicles_data.items() if now - v["timestamp"] > 30]
+    for vid in expired:
+        del vehicles_data[vid]
+
+    vehicles_list = list(vehicles_data.values())
+
+    # Apply route_id filter if provided
+    if route_filter:
+        vehicles_list = [v for v in vehicles_list if v.get("route_id") == route_filter]
+
+    # Return only vehicles with a route_id
+    vehicles_list = [v for v in vehicles_list if v.get("route_id")]
+
+    return jsonify({"vehicles": vehicles_list})
 
 # =========================
 # API: Update a vehicle
@@ -83,8 +110,9 @@ def update_vehicle():
     mode = str(data.get("mode", "")).strip().lower()
     lat = data.get("lat")
     lon = data.get("lon")
+    route_id = str(data.get("route_id", "")).strip()
 
-    if not vehicle_id or lat is None or lon is None:
+    if not vehicle_id or lat is None or lon is None or not mode:
         return jsonify({"error": "Missing required fields"}), 400
 
     vehicle = {
@@ -92,10 +120,11 @@ def update_vehicle():
         "mode": mode,
         "lat": float(lat),
         "lon": float(lon),
+        "route_id": route_id if route_id else None,
         "timestamp": time.time()
     }
 
-    # Update in-memory
+    # Update in-memory store
     vehicles_data[vehicle_id] = vehicle
 
     # Save to DB
@@ -104,14 +133,23 @@ def update_vehicle():
     return jsonify({"status": "success", "vehicle": vehicle})
 
 # =========================
-# Clean up old entries
+# Cleanup Thread (DB + Memory)
 # =========================
 def cleanup_thread():
     while True:
         now = time.time()
-        expired = [vid for vid, v in vehicles_data.items() if now - v["timestamp"] > 600]  # older than 10 min
+        expired = [vid for vid, v in vehicles_data.items() if now - v["timestamp"] > 600]  # 10 min
         for vid in expired:
             del vehicles_data[vid]
+
+        # Also remove from DB
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        cutoff = now - 600
+        c.execute("DELETE FROM vehicles WHERE timestamp < ?", (cutoff,))
+        conn.commit()
+        conn.close()
+
         time.sleep(60)
 
 # =========================
