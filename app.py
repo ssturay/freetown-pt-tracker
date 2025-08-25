@@ -23,6 +23,7 @@ def init_db():
             lat REAL,
             lon REAL,
             route_id TEXT,
+            stop_name TEXT,
             sharing INTEGER DEFAULT 0,
             timestamp REAL
         )
@@ -37,7 +38,7 @@ def load_from_db():
     global vehicles_data
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT id, role, lat, lon, route_id, sharing, timestamp FROM vehicles")
+    c.execute("SELECT id, role, lat, lon, route_id, stop_name, sharing, timestamp FROM vehicles")
     rows = c.fetchall()
     conn.close()
     for row in rows:
@@ -47,8 +48,9 @@ def load_from_db():
             "lat": row[2],
             "lon": row[3],
             "route_id": row[4],
-            "sharing": bool(row[5]),
-            "timestamp": row[6]
+            "stop_name": row[5],
+            "sharing": bool(row[6]),
+            "timestamp": row[7]
         }
 
 # =========================
@@ -58,13 +60,14 @@ def save_to_db(vehicle):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("""
-        INSERT INTO vehicles (id, role, lat, lon, route_id, sharing, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO vehicles (id, role, lat, lon, route_id, stop_name, sharing, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
             role=excluded.role,
             lat=excluded.lat,
             lon=excluded.lon,
             route_id=excluded.route_id,
+            stop_name=excluded.stop_name,
             sharing=excluded.sharing,
             timestamp=excluded.timestamp
     """, (
@@ -73,6 +76,7 @@ def save_to_db(vehicle):
         vehicle["lat"],
         vehicle["lon"],
         vehicle["route_id"],
+        vehicle.get("stop_name"),
         1 if vehicle["sharing"] else 0,
         vehicle["timestamp"]
     ))
@@ -98,13 +102,13 @@ def get_vehicles():
     if route_filter:
         vehicles_list = [v for v in vehicles_list if v.get("route_id") == route_filter]
 
-    # Only return vehicles that are actively sharing
+    # Only return vehicles actively sharing
     vehicles_list = [v for v in vehicles_list if v.get("sharing")]
 
     return jsonify({"vehicles": vehicles_list})
 
 # =========================
-# API: Update a vehicle
+# API: Update a vehicle (drivers and passengers)
 # =========================
 @app.route("/api/update_vehicle", methods=["POST"])
 def update_vehicle():
@@ -115,6 +119,7 @@ def update_vehicle():
     lat = data.get("lat")
     lon = data.get("lon")
     route_id = str(data.get("route_id", "")).strip()
+    stop_name = str(data.get("stop_name", "")).strip() if data.get("stop_name") else None
     sharing = 1 if data.get("sharing") else 0
 
     if not vehicle_id or lat is None or lon is None or not role:
@@ -126,17 +131,34 @@ def update_vehicle():
         "lat": float(lat),
         "lon": float(lon),
         "route_id": route_id if route_id else None,
+        "stop_name": stop_name,
         "sharing": sharing,
         "timestamp": time.time()
     }
 
-    # Update in-memory store
     vehicles_data[vehicle_id] = vehicle
-
-    # Save to DB
     save_to_db(vehicle)
 
     return jsonify({"status": "success", "vehicle": vehicle})
+
+# =========================
+# API: Remove vehicle (stop sharing)
+# =========================
+@app.route("/api/remove_vehicle", methods=["POST"])
+def remove_vehicle():
+    data = request.get_json(force=True)
+    vehicle_id = str(data.get("id", "")).strip()
+    if vehicle_id and vehicle_id in vehicles_data:
+        # Remove from memory
+        del vehicles_data[vehicle_id]
+        # Remove from DB
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("DELETE FROM vehicles WHERE id=?", (vehicle_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "removed"})
+    return jsonify({"error": "Vehicle not found"}), 404
 
 # =========================
 # Cleanup Thread (DB + Memory)
@@ -148,7 +170,6 @@ def cleanup_thread():
         for vid in expired:
             del vehicles_data[vid]
 
-        # Also remove from DB
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
         cutoff = now - 600
