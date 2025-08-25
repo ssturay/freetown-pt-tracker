@@ -149,14 +149,8 @@ def remove_vehicle():
     data = request.get_json(force=True)
     vehicle_id = str(data.get("id", "")).strip()
     if vehicle_id and vehicle_id in vehicles_data:
-        # Remove from memory
-        del vehicles_data[vehicle_id]
-        # Remove from DB
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("DELETE FROM vehicles WHERE id=?", (vehicle_id,))
-        conn.commit()
-        conn.close()
+        vehicles_data[vehicle_id]["sharing"] = False
+        save_to_db(vehicles_data[vehicle_id])
         return jsonify({"status": "removed"})
     return jsonify({"error": "Vehicle not found"}), 404
 
