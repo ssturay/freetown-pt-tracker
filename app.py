@@ -19,10 +19,11 @@ def init_db():
     c.execute("""
         CREATE TABLE IF NOT EXISTS vehicles (
             id TEXT PRIMARY KEY,
-            mode TEXT,
+            role TEXT,
             lat REAL,
             lon REAL,
             route_id TEXT,
+            sharing INTEGER DEFAULT 0,
             timestamp REAL
         )
     """)
@@ -36,17 +37,18 @@ def load_from_db():
     global vehicles_data
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT id, mode, lat, lon, route_id, timestamp FROM vehicles")
+    c.execute("SELECT id, role, lat, lon, route_id, sharing, timestamp FROM vehicles")
     rows = c.fetchall()
     conn.close()
     for row in rows:
         vehicles_data[row[0]] = {
             "id": row[0],
-            "mode": row[1],
+            "role": row[1],
             "lat": row[2],
             "lon": row[3],
             "route_id": row[4],
-            "timestamp": row[5]
+            "sharing": bool(row[5]),
+            "timestamp": row[6]
         }
 
 # =========================
@@ -56,20 +58,22 @@ def save_to_db(vehicle):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("""
-        INSERT INTO vehicles (id, mode, lat, lon, route_id, timestamp)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO vehicles (id, role, lat, lon, route_id, sharing, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
-            mode=excluded.mode,
+            role=excluded.role,
             lat=excluded.lat,
             lon=excluded.lon,
             route_id=excluded.route_id,
+            sharing=excluded.sharing,
             timestamp=excluded.timestamp
     """, (
         vehicle["id"],
-        vehicle["mode"],
+        vehicle["role"],
         vehicle["lat"],
         vehicle["lon"],
         vehicle["route_id"],
+        1 if vehicle["sharing"] else 0,
         vehicle["timestamp"]
     ))
     conn.commit()
@@ -94,8 +98,8 @@ def get_vehicles():
     if route_filter:
         vehicles_list = [v for v in vehicles_list if v.get("route_id") == route_filter]
 
-    # Return only vehicles with a route_id
-    vehicles_list = [v for v in vehicles_list if v.get("route_id")]
+    # Only return vehicles that are actively sharing
+    vehicles_list = [v for v in vehicles_list if v.get("sharing")]
 
     return jsonify({"vehicles": vehicles_list})
 
@@ -107,20 +111,22 @@ def update_vehicle():
     data = request.get_json(force=True)
 
     vehicle_id = str(data.get("id", "")).strip()
-    mode = str(data.get("mode", "")).strip().lower()
+    role = str(data.get("role", "")).strip()
     lat = data.get("lat")
     lon = data.get("lon")
     route_id = str(data.get("route_id", "")).strip()
+    sharing = 1 if data.get("sharing") else 0
 
-    if not vehicle_id or lat is None or lon is None or not mode:
+    if not vehicle_id or lat is None or lon is None or not role:
         return jsonify({"error": "Missing required fields"}), 400
 
     vehicle = {
         "id": vehicle_id,
-        "mode": mode,
+        "role": role,
         "lat": float(lat),
         "lon": float(lon),
         "route_id": route_id if route_id else None,
+        "sharing": sharing,
         "timestamp": time.time()
     }
 
